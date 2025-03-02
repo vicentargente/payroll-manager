@@ -1,0 +1,25 @@
+workspace = { members = ["macros"] }
+
+[package]
+name = "payroll-manager"
+version = "0.1.0"
+edition = "2021"
+resolver = "2"
+
+[dependencies]
+macros = { path = "./macros" }
+actix-web = "4.9.0"
+bcrypt = "0.17.0"
+dotenv = "0.15.0"
+serde = { version = "1.0.217", features = ["derive"] }
+serde_json = "1.0.138"
+sqlx = { version = "0.8.3", features = ["runtime-tokio-rustls", "sqlite"] }
+regex = "1.11.1"
+jsonwebtoken = "9.3.1"
+chrono = "0.4.39"
+minio = { git = "https://github.com/minio/minio-rs.git", rev = "c4e302dda7005c5e860f25459a391daf37fc5eaf" }
+actix-multipart = "0.7.2"
+futures-util = "0.3.31"
+tokio = { version = "1.43.0", features = ["fs"] }
+uuid = { version = "1.15.1", features = ["v7"] }
+lopdf = "0.35.0"
