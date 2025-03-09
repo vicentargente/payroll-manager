@@ -85,6 +85,21 @@ impl PermissionService {
         )
     }
 
+    #[executor]
+    pub async fn get_payrolls(&self, actor_user_id: i64, requested_user_id: Option<i64>) -> Result<bool, AppError> {
+        let permission = self.get_permission(tx, actor_user_id).await?;
+        let operation = Operation::Read;
+
+        Ok(
+            permission.payroll(Scope::Any(operation)) ||
+            if let Some(user_id) = requested_user_id {
+                (permission.payroll(Scope::Owned(operation)) && actor_user_id == user_id) ||
+                (permission.payroll(Scope::SelfCompany(operation)) && Self::actor_and_requested_user_same_company(tx, actor_user_id, user_id).await)
+            }
+            else { false }
+        )
+    }
+
     async fn actor_and_created_user_same_company(tx: &mut SqliteConnection, actor_user_id: i64, user: &CreateUserDto) -> bool {
         let user_service = &service::get().user_service;
 

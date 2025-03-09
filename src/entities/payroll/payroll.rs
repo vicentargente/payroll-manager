@@ -1,5 +1,6 @@
 use macros::DeriveCustomModel;
 use serde::{Deserialize, Serialize};
+use sqlx::prelude::FromRow;
 
 use crate::{config, error::error::{AppError, AppErrorType}};
 
@@ -12,6 +13,7 @@ use crate::{config, error::error::{AppError, AppErrorType}};
 #[custom_model(model(
     name = "RetrievePayrollDb",
     fields(id, date, user_id, filename, file_size),
+    extra_derives(FromRow)
 ))]
 #[custom_model(model(
     name = "CreatePayrollDto",
@@ -38,7 +40,7 @@ pub struct Payroll {
 impl Payroll {
     pub fn check_date(date: &str) -> Result<(), AppError> {
         // It must be YYYY-MM
-        let rx = regex::Regex::new(r"^\d{4}-\d{2}$").unwrap();
+        let rx = regex::Regex::new(r"^\d{4}-(?<month>\d{2})$").unwrap();
         if !rx.is_match(date) {
             return Err(AppError::new(
                 format!("Invalid date format: {}", date),
@@ -46,7 +48,16 @@ impl Payroll {
                 None
             ));
         }
-        
+
+        let captures = rx.captures(date).unwrap();
+        let month = captures["month"].parse::<u8>().unwrap();
+        if month < 1 || month > 12 {
+            return Err(AppError::new(
+                String::from("Month must be between 1 and 12"),
+                AppErrorType::BadRequest,
+                None
+            ));
+        }
 
         Ok(())
     }

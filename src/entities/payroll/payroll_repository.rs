@@ -1,8 +1,8 @@
-use sqlx::SqliteConnection;
+use sqlx::{QueryBuilder, SqliteConnection};
 
 use crate::{error::error::AppError, util::db::to_app_error};
 
-use super::payroll::{CreatePayrollDb, RetrievePayrollDb};
+use super::{payroll::{CreatePayrollDb, RetrievePayrollDb}, custom_models::payroll_filter::PayrollFilterDb};
 
 pub struct PayrollRepository {}
 
@@ -32,5 +32,21 @@ impl PayrollRepository {
         .fetch_one(tx)
         .await
         .map_err(to_app_error)
+    }
+
+    pub async fn get_filtered_payrolls(&self, tx: &mut SqliteConnection, filter: PayrollFilterDb) -> Result<Vec<RetrievePayrollDb>, AppError> {
+        let mut query = QueryBuilder::new(
+            r#"
+            SELECT id, date, user_id, filename, file_size
+            FROM Payroll
+            "#
+        );
+
+        filter.fill_query(&mut query);
+
+        query.build_query_as()
+            .fetch_all(tx)
+            .await
+            .map_err(to_app_error)
     }
 }

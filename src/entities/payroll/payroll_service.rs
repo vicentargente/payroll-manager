@@ -6,7 +6,7 @@ use sqlx::{SqliteConnection, SqlitePool};
 
 use crate::{config, error::error::{AppError, AppErrorType}, util::{file::{check_pdf, remove_file}, minio::MinioService}};
 
-use super::{payroll::{CreatePayrollDb, CreatePayrollDto, RetrievePayrollDto}, payroll_repository::PayrollRepository};
+use super::{custom_models::payroll_filter::{PayrollFilterDb, PayrollFilterDto}, payroll::{CreatePayrollDb, CreatePayrollDto, RetrievePayrollDto}, payroll_repository::PayrollRepository};
 
 pub struct PayrollService {
     db_pool: SqlitePool,
@@ -28,6 +28,13 @@ impl PayrollService {
         let result = self.do_create_payroll(tx, payroll, file_path, file_name, original_file_name).await;
         remove_file(file_path).await?;
         result
+    }
+
+    #[executor]
+    pub async fn get_filtered_payrolls(&self, filter: PayrollFilterDto) -> Result<Vec<RetrievePayrollDto>, AppError> {
+        let payrolls = self.payroll_repository.get_filtered_payrolls(tx, PayrollFilterDb::from_payroll_filter_dto(filter)?).await?;
+
+        Ok(payrolls.into_iter().map(|payroll| payroll.to_retrieve_payroll_dto()).collect())
     }
 
     async fn do_create_payroll(
