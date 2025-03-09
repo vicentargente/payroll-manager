@@ -163,20 +163,24 @@ pub async fn extract_file(payload: &mut Multipart) -> Result<FileInfo, AppError>
 
                 // let start = tokio::time::Instant::now();
 
-                if let Err(e) = process_file_receiving(&mut field, &file_path).await {
-                    tokio::fs::remove_file(&file_path).await.map_err(|err| AppError::new(
-                        format!("Failed removing file [{}]. Trigger error: {}", file_path, err),
-                        AppErrorType::InternalServerError,
-                        None
-                    ))?;
+                let read_bytes = match process_file_receiving(&mut field, &file_path).await {
+                    Ok(size) => size,
+                    Err(err) => {
+                        tokio::fs::remove_file(&file_path).await.map_err(|err| AppError::new(
+                            format!("Failed removing file when receiving error: {}", err),
+                            AppErrorType::InternalServerError,
+                            None
+                        ))?;
 
-                    return Err(e);
-                }
+                        return Err(err);
+                    }
+                };
 
                 return Ok(FileInfo {
                     file_path,
                     original_file_name: file_name,
-                    unique_file_name
+                    unique_file_name,
+                    file_size: read_bytes
                 });
             }
         }
@@ -189,7 +193,7 @@ pub async fn extract_file(payload: &mut Multipart) -> Result<FileInfo, AppError>
     ))
 }
 
-async fn process_file_receiving(field: &mut Field, file_path: &str) -> Result<(), AppError> {
+async fn process_file_receiving(field: &mut Field, file_path: &str) -> Result<i64, AppError> {
     let max_size = config::get().file.max_size;
 
     let mut total_size = 0u64;
@@ -228,7 +232,7 @@ async fn process_file_receiving(field: &mut Field, file_path: &str) -> Result<()
         ))?;
     }
 
-    Ok(())
+    Ok(total_size as i64)
 }
 
 // pub async fn process_file_request_with_body<B, F>(payload: &mut Multipart) -> Result<BodyAndFile<B>, AppError>
@@ -408,5 +412,6 @@ async fn process_file_receiving(field: &mut Field, file_path: &str) -> Result<()
 pub struct FileInfo {
     pub file_path: String,
     pub original_file_name: String,
-    pub unique_file_name: String
+    pub unique_file_name: String,
+    pub file_size: i64
 }

@@ -16,6 +16,11 @@ use crate::{config, error::error::{AppError, AppErrorType}};
     extra_derives(FromRow)
 ))]
 #[custom_model(model(
+    name = "RetrievePayrollDownloadDataDb",
+    fields(object_key, filename, content_type, file_size),
+    extra_derives(FromRow)
+))]
+#[custom_model(model(
     name = "CreatePayrollDto",
     fields(date, user_id),
     extra_derives(Deserialize, Debug)

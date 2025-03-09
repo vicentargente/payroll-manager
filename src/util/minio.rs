@@ -1,5 +1,7 @@
-use std::path::Path;
+use std::{path::Path, pin::Pin};
 
+use actix_web::web;
+use futures_util::Stream;
 use minio::s3::{args::{BucketExistsArgs, MakeBucketArgs}, builders::ObjectContent, client::{Client, ClientBuilder}, creds::StaticProvider, http::BaseUrl, types::S3Api};
 
 use crate::error::error::{AppError, AppErrorType};
@@ -88,4 +90,50 @@ impl MinioService {
 
         Ok(())
     }
+
+    pub async fn get_file_stream(&self, bucket_name: &str, object_name: &str) -> Result<MinioStreamInfo, AppError> {
+        let (stream, size) = self.client
+            .get_object(bucket_name, object_name)
+            .send()
+            .await
+            .map_err(
+                |err| AppError::new(
+                    format!("Failed to get file stream: {}", err),
+                    AppErrorType::InternalServerError,
+                    None
+                )
+            )?
+            .content
+            .to_stream()
+            .await
+            .map_err(
+                |err| AppError::new(
+                    format!("Failed to get file stream: {}", err),
+                    AppErrorType::InternalServerError,
+                    None
+                )
+            )?;
+
+            let size = match size {
+                minio::s3::builders::Size::Known(size) => size as i64,
+                minio::s3::builders::Size::Unknown => {
+                    return Err(AppError::new(
+                        String::from("Failed to get file size"),
+                        AppErrorType::InternalServerError,
+                        None
+                    ));
+                }
+            };
+
+            Ok(MinioStreamInfo {
+                stream,
+                size
+            })
+
+    }
+}
+
+pub struct MinioStreamInfo {
+    pub stream: Pin<Box<dyn Stream<Item = Result<web::Bytes, std::io::Error>> + Send>>,
+    pub size: i64
 }

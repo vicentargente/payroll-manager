@@ -2,7 +2,7 @@ use sqlx::{QueryBuilder, SqliteConnection};
 
 use crate::{error::error::AppError, util::db::to_app_error};
 
-use super::{payroll::{CreatePayrollDb, RetrievePayrollDb}, custom_models::payroll_filter::PayrollFilterDb};
+use super::{custom_models::payroll_filter::PayrollFilterDb, payroll::{CreatePayrollDb, RetrievePayrollDb, RetrievePayrollDownloadDataDb}};
 
 pub struct PayrollRepository {}
 
@@ -48,5 +48,37 @@ impl PayrollRepository {
             .fetch_all(tx)
             .await
             .map_err(to_app_error)
+    }
+
+    pub async fn get_payroll_by_id(&self, tx: &mut SqliteConnection, payroll_id: i64) -> Result<RetrievePayrollDownloadDataDb, AppError> {
+        sqlx::query_as!(
+            RetrievePayrollDownloadDataDb,
+            r#"
+            SELECT object_key, filename, content_type, file_size
+            FROM Payroll
+            WHERE id = $1
+            LIMIT 1
+            "#,
+            payroll_id
+        )
+        .fetch_one(tx)
+        .await
+        .map_err(to_app_error)
+    }
+
+    pub async fn get_user_by_payroll_id(&self, tx: &mut SqliteConnection, payroll_id: i64) -> Result<i64, AppError> {
+        sqlx::query!(
+            r#"
+            SELECT user_id
+            FROM Payroll
+            WHERE id = $1
+            LIMIT 1
+            "#,
+            payroll_id
+        )
+        .fetch_one(tx)
+        .await
+        .map(|row| row.user_id)
+        .map_err(to_app_error)
     }
 }
