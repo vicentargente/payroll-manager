@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use actix_web::{web, App, HttpServer};
 use dotenv::dotenv;
-use payroll_manager::{config::{self}, entities::{company::{self, company_repository::CompanyRepository, company_service::CompanyService}, payroll::{self, payroll_repository::PayrollRepository, payroll_service::PayrollService}, permission::{permission_repository::PermissionRepository, permission_service::PermissionService}}, initialize_config, service::{self, ServiceHub}, user::{self, auth_service::AuthService, user_repository::UserRepository, user_service::UserService}, util::{db::get_db_pool, minio::MinioService}};
+use payroll_manager::{config::{self}, entities::{company::{self, company_repository::CompanyRepository, company_service::CompanyService}, payroll::{self, payroll_repository::PayrollRepository, payroll_service::PayrollService}, permission::{permission_repository::PermissionRepository, permission_service::PermissionService}}, initialize_config, service::{self, ServiceHub}, user::{self, auth_service::AuthService, user_repository::UserRepository, user_service::UserService}, util::{db::{get_db_pool, run_migrations}, minio::MinioService}};
 
 
 #[actix_web::main]
@@ -15,6 +15,11 @@ async fn main() -> std::io::Result<()> {
 
     let db_pool = get_db_pool(&config.database.url).await;
     let minio_service = Arc::new(MinioService::new(&config.bucket.host, &config.bucket.access_key, &config.bucket.secret_key));
+
+    match run_migrations(&db_pool).await {
+        Ok(_) => (),
+        Err(err) => panic!("Failed to run migrations: {}", err.message())
+    }
 
     minio_service.create_bucket_if_not_exists(&config.bucket.payroll_base_bucket_name).await.expect("Failed to create bucket");
 

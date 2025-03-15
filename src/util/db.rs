@@ -15,3 +15,18 @@ pub fn to_app_error(error: sqlx::Error) -> AppError {
         None
     )
 }
+
+pub async fn run_migrations(pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(), AppError> {
+    sqlx::migrate!()
+        .run(pool)
+        .await
+        .map_err(
+            |error| AppError::new(
+                error.to_string(),
+                AppErrorType::InternalServerError,
+                None
+            )
+        )?;
+
+    Ok(())
+}
