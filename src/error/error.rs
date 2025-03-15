@@ -22,6 +22,10 @@ impl AppError {
         adapter(self.r#type)
     }
 
+    pub fn message(&self) -> &str {
+        &self.message
+    }
+
     fn scope(&self) -> AppErrorScope {
         match self.r#type {
             AppErrorType::BadRequest |
