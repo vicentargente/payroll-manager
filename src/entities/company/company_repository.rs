@@ -1,6 +1,6 @@
 use crate::{error::error::AppError, util::db::to_app_error};
 
-use super::company::{CreateCompanyDb, RetrieveCompanyDb};
+use super::{company::{CreateCompanyDb, RetrieveCompanyDb}, custom_models::company_filter::CompanyFilterDb};
 
 pub struct CompanyRepository {
 
@@ -41,6 +41,23 @@ impl CompanyRepository {
         .fetch_optional(tx)
         .await
         .map(|r| r.is_some())
+        .map_err(to_app_error)
+    }
+
+    pub async fn get_companies(&self, tx: &mut sqlx::SqliteConnection, filters: CompanyFilterDb) -> Result<Vec<RetrieveCompanyDb>, AppError> {
+        sqlx::query_as!(
+            RetrieveCompanyDb,
+            r#"
+            SELECT id, name
+            FROM Company
+            LIMIT $1
+            OFFSET $2
+            "#,
+            filters.limit,
+            filters.offset
+        )
+        .fetch_all(tx)
+        .await
         .map_err(to_app_error)
     }
 }

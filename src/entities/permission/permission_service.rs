@@ -75,6 +75,16 @@ impl PermissionService {
     }
 
     #[executor]
+    pub async fn retrieve_companies(&self, actor_user_id: i64) -> Result<bool, AppError> {
+        let permission = self.get_permission(tx, actor_user_id).await?;
+        let operation = Operation::Read;
+
+        Ok(
+            permission.company(Scope::Any(operation))
+        )
+    }
+
+    #[executor]
     pub async fn create_payroll(&self, actor_user_id: i64, payroll: &CreatePayrollDto) -> Result<bool, AppError> {
         let permission = self.get_permission(tx, actor_user_id).await?;
         let operation = Operation::Create;
