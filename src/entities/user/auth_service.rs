@@ -1,5 +1,6 @@
 
-use bcrypt::{hash, DEFAULT_COST};
+use actix_web::web;
+use bcrypt::DEFAULT_COST;
 
 use crate::{auth::jwt::generate_token, error::error::{AppError, AppErrorType}, service};
 
@@ -21,12 +22,12 @@ impl AuthService {
             return Err(app_error);
         }
 
-        let hashed_pass = hash(&user.password, DEFAULT_COST)
-            .map_err(|err| AppError::new(
-                err.to_string(),
-                AppErrorType::InternalServerError,
-                None
-            ))?;
+        let hashed_pass = web::block(move || {
+            bcrypt::hash(&user.password, DEFAULT_COST)
+        })
+            .await
+            .map_err(AppError::internal_from_generic)?
+            .map_err(AppError::internal_from_generic)?;
 
         let hashed_user = CreateUserDto {
             username: user.username,
@@ -55,12 +56,12 @@ impl AuthService {
             }
         };
 
-        let password_is_correct = bcrypt::verify(&user.password, &existing_user.password)
-            .map_err(|err| AppError::new(
-                err.to_string(),
-                AppErrorType::InternalServerError,
-                None
-            ))?;
+        let password_is_correct = web::block(move || {
+            bcrypt::verify(&user.password, &existing_user.password)
+        })
+            .await
+            .map_err(AppError::internal_from_generic)?
+            .map_err(AppError::internal_from_generic)?;
 
         if !password_is_correct {
             return Err(AppError::new(
